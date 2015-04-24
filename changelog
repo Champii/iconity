@@ -1,1 +1,18 @@
-Rien
+24/04
+
+La base de donnee sera remise a zero frequemment.
+
++ PUT /api/1/articles/:id/rent
+Demande l'ajout d'une date de location (3 max par users)
+
+  {
+    "date": "2015-04-24T20:02:51.522Z"
+  }
+
+  => 200
+
+  x 500
+  x 403
+
+
+

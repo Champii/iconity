@@ -5,6 +5,8 @@ Nodulator = require 'nodulator'
 
 products = require './products'
 
+ReservationResource = require './ReservationResource'
+
 articleConfig =
   # restrict: Nodulator.Route.Auth()
   schema:
@@ -31,22 +33,37 @@ class ArticleRoute extends Nodulator.Route.DefaultRoute
     @Post   (req, res) -> res.sendStatus 404
     @Put    (req, res) -> res.sendStatus 404
 
-    # @Put '/:id/rent', (req, res) =>
-    #   console.log 'rent', req.user
-    #   if not req.body.date? or not Nodulator.Validator.isDate req.body.date
-    #     return res.status(500).send 'Bad date'
+    @Put '/:id/rent', @Auth(), (req, res) =>
+      if not req.body.date? or not Nodulator.Validator.isDate req.body.date
+        return res.status(500).send err: 'Bad date'
 
-    #   if req.body.date in @instance.rentedDate
-    #     return res.status(500).send 'Already rented'
+      date = new Date(req.body.date)
 
-    #   @instance.rentedDate.push req.body.date
-    #   @instance.Save (err) ->
-    #     return res.status(500).send err if err?
+      if date.toDateString() in @instance.rentedDate
+        return res.status(500).send err: 'Already rented'
 
-    #     res.status(200).send @instance
+      ReservationResource.Create
+        userId: req.user.id
+        articleId: +req.params.id
+        date: date.toDateString()
+      , (err, rents) =>
+        return res.status(500).send err if err?
 
+        @resource.Fetch @instance.id, (err, instance) =>
+          return res.status(500).send err if err?
+
+          res.status(200).send instance
 
 class ArticleResource extends Nodulator.Resource 'article', ArticleRoute, articleConfig
+
+  @Deserialize: (blob, done) ->
+    if blob.id?
+      ReservationResource.ListBy {articleId: blob.id}, (err, rents) =>
+
+        blob.rentedDate = _(rents).pluck 'date'
+        super blob, done
+    else
+      super blob, done
 
 ArticleResource.Init()
 
